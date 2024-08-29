@@ -20,6 +20,9 @@ from utils import (
     prepare_ml_data_from_features,
 )
 
+from sklearn.model_selection import train_test_split
+from utils import prepare_ml_data_from_features
+
 # Фиксация random seed для воспроизводимости
 random_seed = 42
 np.random.seed(random_seed)
@@ -39,7 +42,7 @@ warnings.filterwarnings("ignore")
 # Загрузка данных
 file_path = "Meteo1-2023-15min(resampled).csv"
 df = pd.read_csv(file_path, delimiter=",")
-
+target_variable = "WindSpeed"
 # Преобразование времени в datetime и установка индекса
 df["time_YYMMDD_HHMMSS"] = pd.to_datetime(
     df["time_YYMMDD_HHMMSS"], format="%Y-%m-%d %H:%M:%S"
@@ -64,7 +67,7 @@ rolling_window_max_list = [10, 25, 50]
 expanding_window_min_list = [1, 5, 10]
 expanding_window_max_list = [10, 25, 50]
 hidden_layers_list = [5]
-neurons_list = [25, 100]
+neurons_list = [100]
 
 # Результаты для сохранения
 results = []
@@ -122,9 +125,14 @@ for (
         )
     )
 
+    # Разделение данных на обучающую и тестовую выборки
+    df_train, df_test = train_test_split(
+        df_transformed, test_size=0.1, random_state=42, shuffle=False
+    )
+
     # Генерация признаков
-    df_transformed_features = generate_time_series_features(
-        df_transformed,
+    df_train = generate_time_series_features(
+        df_train,
         columns=[
             "WindSpeedMax",
             "AirTemperature",
@@ -139,18 +147,33 @@ for (
         expanding_window_sizes=expanding_window_sizes,
     )
 
-    # Разделение данных на обучающую и тестовую выборки
-    df_train, df_test = train_test_split(
-        df_transformed_features, test_size=0.1, random_state=42, shuffle=False
+    # Генерация признаков
+    df_test = generate_time_series_features(
+        df_test,
+        columns=[
+            "WindSpeedMax",
+            "AirTemperature",
+            "AirPressure",
+            "AirHumidity",
+            "WindSpeed",
+            "WindDirection_sin",
+            "WindDirection_cos",
+        ],
+        lags=lags,
+        rolling_window_sizes=rolling_window_sizes,
+        expanding_window_sizes=expanding_window_sizes,
     )
-
     # Подготовка данных для машинного обучения
     X_train, y_train = prepare_ml_data_from_features(
-        df_train, target_variable="WindSpeed", forecast_horizon=forecast_horizon
+        df_train, target_variable=target_variable, forecast_horizon=forecast_horizon
     )
     X_test, y_test = prepare_ml_data_from_features(
-        df_test, target_variable="WindSpeed", forecast_horizon=forecast_horizon
+        df_test, target_variable=target_variable, forecast_horizon=forecast_horizon
     )
+
+    # # Вывод размеров данных
+    # print(f"Размеры обучающего набора X_train: {X_train.shape}, y_train: {y_train.shape}")
+    # print(f"Размеры тестового набора X_test: {X_test.shape}, y_test: {y_test.shape}")
 
     # Масштабирование данных
     scaler_X = StandardScaler()
@@ -189,7 +212,7 @@ for (
     model.fit(
         X_train_scaled,
         y_train_scaled,
-        epochs=150,
+        epochs=100,
         batch_size=256,
         validation_split=0.2,
         callbacks=[checkpoint, reduce_lr, early_stopping],
