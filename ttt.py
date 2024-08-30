@@ -60,12 +60,17 @@ df_transformed = cyclical_feature_encoding(
 )
 
 # Параметры для поиска
-lookback_hours_list = [3, 6, 12]
-lag_step_list = [1, 2, 3]
-rolling_window_min_list = [1, 5, 10]
-rolling_window_max_list = [10, 25, 50]
-expanding_window_min_list = [1, 5, 10]
-expanding_window_max_list = [10, 25, 50]
+lookback_hours_list = [
+    4,
+    8,
+    16,
+    32,
+]
+lag_step_list = [1]
+rolling_window_min_list = [2, 4, 8, 16]
+rolling_window_max_list = [16, 32, 64]
+expanding_window_min_list = [2, 4, 8, 16]
+expanding_window_max_list = [16, 32, 64]
 hidden_layers_list = [5]
 neurons_list = [100]
 
@@ -212,7 +217,7 @@ for (
     model.fit(
         X_train_scaled,
         y_train_scaled,
-        epochs=100,
+        epochs=500,
         batch_size=256,
         validation_split=0.2,
         callbacks=[checkpoint, reduce_lr, early_stopping],
@@ -252,6 +257,6 @@ pbar.close()
 
 # Сохранение результатов в Excel
 results_df = pd.DataFrame(results)
-results_df.to_excel("grid_search_results.xlsx", index=False)
+results_df.to_excel("grid_search_results3.xlsx", index=False)
 
 print("Grid search completed and results saved to 'grid_search_results.xlsx'.")
